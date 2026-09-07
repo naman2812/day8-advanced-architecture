@@ -13,18 +13,13 @@
       --text-main: #f3f4f6;
       --text-muted: #9ca3af;
       --accent: #3b82f6;
-      --accent-glow: rgba(59, 130, 246, 0.25);
       --fallback: #ef4444;
       --success: #10b981;
       --warning: #f59e0b;
       --telemetry: #a855f7;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -35,15 +30,9 @@
       line-height: 1.6;
     }
 
-    .container {
-      max-width: 1280px;
-      margin: 0 auto;
-    }
+    .container { max-width: 1300px; margin: 0 auto; }
 
-    header {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
+    header { text-align: center; margin-bottom: 2rem; }
 
     .badge {
       display: inline-block;
@@ -72,19 +61,32 @@
     .subtitle {
       color: var(--text-muted);
       font-size: 1.05rem;
-      max-width: 750px;
+      max-width: 800px;
       margin: 0 auto;
     }
 
-    /* Key Deliverable Highlight Card */
+    .deliverables-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
     .callout-card {
-      background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(30, 41, 59, 0.7) 100%);
-      border: 1px solid rgba(239, 68, 68, 0.3);
       border-radius: 12px;
       padding: 1.5rem;
-      margin-bottom: 2rem;
       backdrop-filter: blur(12px);
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .callout-card.pillar {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(30, 41, 59, 0.7) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .callout-card.failure {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(30, 41, 59, 0.7) 100%);
+      border: 1px solid rgba(239, 68, 68, 0.3);
     }
 
     .callout-card h2 {
@@ -92,16 +94,17 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      color: #f87171;
       margin-bottom: 0.5rem;
     }
 
+    .callout-card.pillar h2 { color: #93c5fd; }
+    .callout-card.failure h2 { color: #f87171; }
+
     .callout-card p {
       color: #e2e8f0;
-      font-size: 0.98rem;
+      font-size: 0.95rem;
     }
 
-    /* Diagram Viewer Box */
     .viewer-panel {
       background: var(--card-bg);
       border: 1px solid var(--border);
@@ -131,31 +134,21 @@
       font-size: 0.85rem;
     }
 
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-
-    .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 3px;
-    }
-    .dot-core { background: #2563eb; }
+    .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+    .dot { width: 12px; height: 12px; border-radius: 3px; }
+    .dot-internal { background: #1d4ed8; }
+    .dot-external { background: #a855f7; border: 1px dashed #ffffff; }
     .dot-fallback { background: #ef4444; border: 1px dashed #ffffff; }
     .dot-eval { background: #f59e0b; }
-    .dot-telemetry { background: #a855f7; }
     .dot-cache { background: #10b981; }
 
     .mermaid-wrapper {
       display: flex;
       justify-content: center;
       padding: 1rem 0;
-      min-width: 800px;
+      min-width: 850px;
     }
 
-    /* Grid of Architectural Details */
     .details-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
@@ -190,19 +183,9 @@
     .card-title.amber { color: #fbbf24; }
     .card-title.purple { color: #c084fc; }
 
-    .card p, .card li {
-      font-size: 0.92rem;
-      color: #cbd5e1;
-    }
-
-    .card ul {
-      margin-left: 1.2rem;
-      margin-top: 0.5rem;
-    }
-
-    .card li {
-      margin-bottom: 0.4rem;
-    }
+    .card p, .card li { font-size: 0.92rem; color: #cbd5e1; }
+    .card ul { margin-left: 1.2rem; margin-top: 0.5rem; }
+    .card li { margin-bottom: 0.4rem; }
 
     code {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -226,16 +209,25 @@
   <div class="container">
     <header>
       <span class="badge">Day 8 Engineering Assignment</span>
-      <h1>Advanced RAG System Architecture</h1>
-      <p class="subtitle">Failure Analysis, Decoupled GPU Scaling, and Autonomous Evaluation Rollback Controls</p>
+      <h1>Enterprise RAG Architecture Visualizer</h1>
+      <p class="subtitle">System Boundaries, Eval Collector Siting, Failure Analysis & Continuous Rollback</p>
     </header>
 
-    <!-- Deliverable Summary Box -->
-    <div class="callout-card">
-      <h2>🛡️ Most Critical Failure Point & Mitigation</h2>
-      <p>
-        <strong>The most critical failure point is an ungrounded hallucination bypassing the evaluation guardrail, which directly damages institutional credibility and user trust.</strong> To mitigate this, the architecture enforces a deterministic citation-grounding validation layer where generated statements must link to explicit retrieved chunk IDs verified via Natural Language Inference (NLI) and regex pattern matching. Any output failing this strict threshold is intercepted before rendering and replaced by a deterministic, pre-approved safe response (<em>"I cannot verify this information based on the available data."</em>).
-      </p>
+    <!-- Two Key Deliverable Cards -->
+    <div class="deliverables-grid">
+      <div class="callout-card pillar">
+        <h2>🏛️ Deliverable 1: Pillar Choices (Day 8 Base)</h2>
+        <p>
+          <strong>For this enterprise knowledge assistant, we selected Retrieval-Augmented Generation (RAG) and Continuous Evaluation & Guardrails as our two primary pillars.</strong> RAG is required because our enterprise documentation updates dynamically and demands deterministic grounding without costly retraining. Continuous Evaluation & Guardrails are essential because user-facing accuracy requires real-time hallucination prevention and automated rollback triggers to maintain strict regulatory compliance.
+        </p>
+      </div>
+
+      <div class="callout-card failure">
+        <h2>🛡️ Deliverable 2: Critical Failure Point (Day 8 Advanced)</h2>
+        <p>
+          <strong>The most critical failure point is an ungrounded hallucination bypassing the evaluation guardrail, which directly damages institutional credibility and user trust.</strong> To mitigate this, the architecture enforces a deterministic citation-grounding validation layer where generated statements must link to explicit retrieved chunk IDs verified via Natural Language Inference (NLI) and regex pattern matching before rendering. Any output failing this strict threshold is intercepted and replaced by a deterministic, pre-approved safe response (<em>"I cannot verify this information based on the available data."</em>).
+        </p>
+      </div>
     </div>
 
     <!-- Live Architecture Diagram Box -->
@@ -244,10 +236,10 @@
         <h3 style="font-size: 1.25rem;">Interactive System Architecture Diagram</h3>
         <div class="legend">
           <div class="legend-item"><div class="dot dot-cache"></div><span>Semantic Cache</span></div>
-          <div class="legend-item"><div class="dot dot-core"></div><span>Core Pipeline</span></div>
+          <div class="legend-item"><div class="dot dot-internal"></div><span>Internal Infrastructure (Yours)</span></div>
+          <div class="legend-item"><div class="dot dot-external"></div><span>Third-Party Services</span></div>
           <div class="legend-item"><div class="dot dot-fallback"></div><span>Circuit Breaker Fallback</span></div>
-          <div class="legend-item"><div class="dot dot-eval"></div><span>Eval Guardrail</span></div>
-          <div class="legend-item"><div class="dot dot-telemetry"></div><span>Telemetry & Rollback</span></div>
+          <div class="legend-item"><div class="dot dot-eval"></div><span>Eval Gate & Collector</span></div>
         </div>
       </div>
 
@@ -255,61 +247,87 @@
         <pre class="mermaid">
 graph TD
     classDef client fill:#1E293B,stroke:#475569,stroke-width:2px,color:#F8FAFC;
-    classDef gateway fill:#0F766E,stroke:#14B8A6,stroke-width:2px,color:#FFFFFF;
     classDef core fill:#1D4ED8,stroke:#3B82F6,stroke-width:2px,color:#FFFFFF;
     classDef fallback fill:#B91C1C,stroke:#EF4444,stroke-width:2px,color:#FFFFFF,stroke-dasharray: 4 4;
     classDef eval fill:#B45309,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF;
     classDef telemetry fill:#581C87,stroke:#A855F7,stroke-width:2px,color:#FFFFFF;
     classDef cache fill:#047857,stroke:#10B981,stroke-width:2px,color:#FFFFFF;
+    classDef note fill:#374151,stroke:#9CA3AF,stroke-width:1px,color:#F9FAFB,stroke-dasharray: 3 3;
 
-    A[User Request]:::client --> B[API Gateway / Web Interface]:::gateway
-    B --> B_Cache{Semantic Cache Lookup}:::gateway
-    
-    B_Cache -- "Cache Hit (Cosine >= 0.95)" --> B_Hit[Deliver Cached Response]:::cache
-    B_Cache -- "Cache Miss" --> C{Query Analyzer & Rewriter}:::core
-    
-    C --> D[Vector DB Retriever]:::core
-    
-    %% Failure Path 1 & Fallback
-    D -- "Failure 1: Low Relevance Score (< 0.70)" --> E[Fallback: Execute Web Search Tool]:::fallback
-    D -- "High Relevance (>= 0.70)" --> F[Async Queue: Cross-Encoder Reranker]:::core
-    E --> F
-    
-    F --> G{Context Monitor}:::core
-    
-    %% Failure Path 2 & Fallback
-    G -- "Failure 2: Token Limit Exceeded (> 80%)" --> H[Fallback: Trigger Map-Reduce Summarization]:::fallback
-    G -- "Optimal Tokens (<= 80%)" --> I[Generator LLM]:::core
-    H --> I
-    
-    I --> J{Eval Gate: Faithfulness Guardrail}:::eval
-    
-    %% Failure Path 3 & Fallback
-    J -- "Failure 3: Hallucination / Low Grounding" --> K[Fallback: Deterministic Safe Response]:::fallback
-    J -- "Pass: Grounded & Faithfulness Verified" --> L[Synthesized Output Delivered]:::client
+    subgraph Client_Layer["User Layer"]
+        A[User Request]:::client
+        L[Synthesized Output Delivered]:::client
+    end
 
-    %% Eval & Telemetry Loop
-    J -.- M[(Telemetry & Metrics DB)]:::telemetry
-    M -. "Alert Trigger: Refusal Spike (> 15%)" .-> N[PagerDuty P1 Incident]:::telemetry
-    M -. "Auto-Rollback Trigger: Faithfulness Drop (< 0.85)" .-> O[CI/CD Auto-Rollback Webhook]:::telemetry
-    O -. "Rollback to Golden Version" .-> I
+    subgraph Internal_Boundary["Internal System Boundary (Your Infrastructure)"]
+        B[API Gateway & Semantic Cache]:::core
+        B_Cache{Semantic Cache Lookup}:::core
+        B_Hit[Deliver Cached Response]:::cache
+        C{Query Analyzer & Rewriter}:::core
+        
+        D[(Internal Vector DB / Hybrid Retriever)]:::core
+        
+        F[Async Queue: Reranker Jobs]:::core
+        F1[Cross-Encoder Reranker Workers]:::core
+        
+        G{Context Window Monitor}:::core
+        H[Fallback 2: Map-Reduce Summarization]:::fallback
+        
+        J{Eval Gate: Faithfulness Guardrail}:::eval
+        K[Fallback 3: Deterministic Safe Response]:::fallback
+
+        EvalCollector["NOTE: Eval Collector (Sits inline post-generation)"]:::note
+        TelemetryDB[(Telemetry & Metrics DB)]:::telemetry
+    end
+
+    subgraph External_Boundary["Third-Party Managed Services Boundary"]
+        E[Fallback 1: External Search Agent Tool (SerpAPI / Tavily)]:::fallback
+        I[Generator LLM API (OpenAI / Anthropic / Vertex AI)]:::core
+        AlertService[PagerDuty / Opsgenie Incident Response]:::telemetry
+        CICD[CI/CD Orchestrator (GitHub Actions / Argo Rollouts)]:::telemetry
+    end
+
+    A --> B
+    B --> B_Cache
+    B_Cache -- "Cache Hit (Cosine >= 0.95)" --> B_Hit --> L
+    B_Cache -- "Cache Miss" --> C
+    C --> D
+
+    D -- "Failure 1: Low Relevance Score (< 0.70)" --> E
+    D -- "High Relevance (>= 0.70)" --> F
+    E -- "Inject Real-Time Web Context" --> F
+
+    F --> F1 --> G
+
+    G -- "Failure 2: Token Limit Exceeded (> 80%)" --> H
+    G -- "Optimal Token Count (<= 80%)" --> I
+    H -- "Compressed Context" --> I
+
+    I --> J
+    J -- "Failure 3: Hallucination / Low Grounding" --> K --> L
+    J -- "Pass: Faithfulness & Grounding Verified" --> L
+
+    J --> EvalCollector
+    EvalCollector -. "Stream Evaluation Telemetry" .-> TelemetryDB
+    
+    TelemetryDB -. "Refusal Spike Alert (> 15%)" .-> AlertService
+    TelemetryDB -. "Auto-Rollback Trigger: Faithfulness Drop (< 0.85)" .-> CICD
+    CICD -. "Rollback to Golden Prompt/Model" .-> I
         </pre>
       </div>
     </div>
 
-    <!-- Technical Deep-Dive Cards -->
+    <!-- Technical Details Cards -->
     <div class="details-grid">
-      <!-- Card 1 -->
       <div class="card">
         <h3 class="card-title red">🚨 3 Explicit Fallbacks</h3>
         <ul>
-          <li><strong>Retriever Failure (Cosine &lt; 0.70):</strong> Routes query to an external tool agent (SerpAPI / Tavily) to dynamically fetch and embed fresh web documents.</li>
-          <li><strong>Context Window Overflow (&gt; 80%):</strong> Intercepted by middleware and compressed via a fast model running hierarchical Map-Reduce summarization.</li>
+          <li><strong>Retriever Failure (&lt; 0.70):</strong> Routes query to external search agent (SerpAPI) to retrieve and embed fresh web documents.</li>
+          <li><strong>Token Limit Exceeded (&gt; 80%):</strong> Intercepted by middleware and compressed via Map-Reduce summarization using a lightweight model.</li>
           <li><strong>Eval Gate Rejection:</strong> NLI faithfulness judge rejects ungrounded drafts and immediately returns a deterministic safe response.</li>
         </ul>
       </div>
 
-      <!-- Card 2 -->
       <div class="card">
         <h3 class="card-title amber">⚡ Scaling the Reranker</h3>
         <ul>
@@ -319,12 +337,12 @@ graph TD
         </ul>
       </div>
 
-      <!-- Card 3 -->
       <div class="card">
         <h3 class="card-title purple">📈 Eval Telemetry & Rollback</h3>
         <ul>
-          <li><strong>Goodhart's Law Alert:</strong> A refusal rate spike &gt;15% while faithfulness is high triggers a PagerDuty P1 incident to detect over-conservative rejection.</li>
-          <li><strong>Automated Rollback:</strong> A drop in faithfulness below 0.85 triggers an automated CI/CD webhook (GitHub Actions / Argo Rollouts) that rolls back traffic to the previous golden release.</li>
+          <li><strong>Eval Collector Siting:</strong> Sits inline post-generation, scoring faithfulness before text reaches the user.</li>
+          <li><strong>Goodhart's Law Alert:</strong> A refusal rate spike &gt;15% while faithfulness is high triggers a PagerDuty P1 incident.</li>
+          <li><strong>Automated Rollback:</strong> A drop in faithfulness below 0.85 triggers an automated CI/CD webhook to roll back to the golden release.</li>
         </ul>
       </div>
     </div>
@@ -340,8 +358,8 @@ graph TD
       theme: 'dark',
       flowchart: {
         curve: 'basis',
-        nodeSpacing: 40,
-        rankSpacing: 45
+        nodeSpacing: 35,
+        rankSpacing: 40
       }
     });
   </script>

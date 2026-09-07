@@ -1,133 +1,152 @@
 # Advanced RAG System Architecture: Reliability, Scaling & Guardrails
-> **Day 8 Assignment Deliverable**: Resilient Multi-Stage RAG Pipeline with Circuit Breakers, Async Reranking, and Continuous Evaluation Rollback.
+> **Day 8 Assignment Deliverable (Foundational & Advanced)**: Resilient Multi-Stage RAG Pipeline with System Boundaries, Circuit Breakers, Async Reranking, and Continuous Evaluation Rollback.
 
 ---
 
-## 📌 Deliverable Summary
+## 📌 Deliverable Summaries
 
-### 1. Most Critical Failure Point & Mitigation (2–3 Sentences)
-> **The most critical failure point is an ungrounded hallucination bypassing the evaluation guardrail, which directly damages institutional credibility and user trust.** To mitigate this, the system enforces a deterministic citation-grounding validation layer where generated statements must link to explicit retrieved chunk IDs verified via Natural Language Inference (NLI) and regex pattern matching. Any output failing this strict threshold is intercepted before rendering and replaced by a deterministic, pre-approved safe response (`"I cannot verify this information based on the available data."`).
+### Deliverable A: 2–3 Sentences Explaining Pillar Choices (Foundational Day 8)
+> **For this enterprise knowledge assistant, we selected Retrieval-Augmented Generation (RAG) and Continuous Evaluation & Guardrails as our two primary pillars.** RAG is required because our enterprise documentation updates dynamically and demands deterministic grounding without costly retraining. Continuous Evaluation & Guardrails are essential because user-facing accuracy requires real-time hallucination prevention and automated rollback triggers to maintain strict regulatory compliance.
+
+### Deliverable B: 2–3 Sentences on Most Critical Failure Point and Mitigation (Advanced Day 8)
+> **The most critical failure point is an ungrounded hallucination bypassing the evaluation guardrail, which directly damages institutional credibility and user trust.** To mitigate this, the architecture enforces a deterministic citation-grounding validation layer where generated statements must link to explicit retrieved chunk IDs verified via Natural Language Inference (NLI) and regex pattern matching. Any output failing this strict threshold is intercepted before rendering and replaced by a deterministic, pre-approved safe response (`"I cannot verify this information based on the available data."`).
 
 ---
 
-## 🏛️ Advanced Architecture Diagram
+## 🏛️ Complete System Architecture Diagram
 
 ```mermaid
 graph TD
-    %% Styling definitions
+    %% Node Styling Definitions
     classDef client fill:#1E293B,stroke:#475569,stroke-width:2px,color:#F8FAFC;
-    classDef gateway fill:#0F766E,stroke:#14B8A6,stroke-width:2px,color:#FFFFFF;
     classDef core fill:#1D4ED8,stroke:#3B82F6,stroke-width:2px,color:#FFFFFF;
     classDef fallback fill:#B91C1C,stroke:#EF4444,stroke-width:2px,color:#FFFFFF,stroke-dasharray: 4 4;
     classDef eval fill:#B45309,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF;
     classDef telemetry fill:#581C87,stroke:#A855F7,stroke-width:2px,color:#FFFFFF;
     classDef cache fill:#047857,stroke:#10B981,stroke-width:2px,color:#FFFFFF;
+    classDef note fill:#374151,stroke:#9CA3AF,stroke-width:1px,color:#F9FAFB,stroke-dasharray: 3 3;
 
-    A[User / Client Request]:::client --> B[API Gateway & Semantic Cache]:::gateway
-    
-    %% Semantic Cache check
-    B -- Cache Hit (Cosine Sim >= 0.95) --> B1[Instant Response from Cache]:::cache
-    B -- Cache Miss --> C{Query Analyzer & Rewriter}:::core
-    
-    C --> D[Vector DB Retriever]:::core
-    
+    %% Client Layer
+    subgraph Client_Layer["User Layer"]
+        A["User Request"]:::client
+        L["Synthesized Output Delivered"]:::client
+    end
+
+    %% Internal Boundary (Your Infrastructure)
+    subgraph Internal_Boundary["Internal System Boundary - Your Infrastructure"]
+        B["API Gateway & Semantic Cache"]:::core
+        B_Cache{"Semantic Cache Lookup"}:::core
+        B_Hit["Deliver Cached Response"]:::cache
+        C{"Query Analyzer & Rewriter"}:::core
+        
+        D[("Internal Vector DB / Hybrid Retriever")]:::core
+        
+        F["Async Queue: Reranker Jobs"]:::core
+        F1["Cross-Encoder Reranker Workers"]:::core
+        
+        G{"Context Window Monitor"}:::core
+        H["Fallback 2: Map-Reduce Summarization"]:::fallback
+        
+        J{"Eval Gate: Faithfulness Guardrail"}:::eval
+        K["Fallback 3: Deterministic Safe Response"]:::fallback
+
+        %% NOTE: Where the Eval Collector sits
+        EvalCollector["NOTE: Eval Collector (Sits inline post-generation)"]:::note
+        TelemetryDB[("Telemetry & Metrics DB")]:::telemetry
+    end
+
+    %% External Boundary (Third-Party Services)
+    subgraph External_Boundary["Third-Party Managed Services Boundary"]
+        E["Fallback 1: External Search Agent Tool (SerpAPI / Tavily)"]:::fallback
+        I["Generator LLM API (OpenAI / Anthropic / Vertex AI)"]:::core
+        AlertService["PagerDuty / Opsgenie Incident Response"]:::telemetry
+        CICD["CI/CD Orchestrator (GitHub Actions / Argo Rollouts)"]:::telemetry
+    end
+
+    %% Workflow Connections
+    A --> B
+    B --> B_Cache
+    B_Cache -- "Cache Hit (Cosine >= 0.95)" --> B_Hit --> L
+    B_Cache -- "Cache Miss" --> C
+    C --> D
+
     %% Failure Point 1 & Fallback
-    D -- "Failure 1: Low Relevance (Score < 0.70)" --> E[Fallback: Execute Web Search Agent Tool]:::fallback
-    D -- "High Relevance (Score >= 0.70)" --> F[Async Reranker Queue]:::core
-    E --> F
-    
-    %% Scaled Component
-    F --> F1[Cross-Encoder Reranker Workers]:::core
-    F1 --> G{Context Window Monitor}:::core
-    
-    %% Failure Point 2 & Fallback
-    G -- "Failure 2: Token Limit Exceeded (> 80%)" --> H[Fallback: Map-Reduce Summarization / Compression]:::fallback
-    G -- "Optimal Token Count (<= 80%)" --> I[Generator LLM]:::core
-    H --> I
-    
-    I --> J{Eval Gate: Faithfulness & Grounding}:::eval
-    
-    %% Failure Point 3 & Fallback
-    J -- "Failure 3: Hallucination / Unverified Claim" --> K[Fallback: Deterministic Safe Response]:::fallback
-    J -- "Passed All Quality Checks" --> L[Synthesized Output Delivered]:::client
+    D -- "Failure 1: Low Relevance Score (< 0.70)" --> E
+    D -- "High Relevance (>= 0.70)" --> F
+    E -- "Inject Real-Time Web Context" --> F
 
-    %% Continuous Telemetry & Auto-Rollback Loop
-    J -. Async Telemetry Stream .-> M[(Telemetry & Metrics DB)]:::telemetry
-    M -. "Anomaly / Refusal Spike (> 15%)" .-> N[PagerDuty P1 Alert]:::telemetry
-    M -. "Critical Drop in Faithfulness (< 0.85)" .-> O[CI/CD Auto-Rollback Webhook]:::telemetry
-    O -. "Rollback to Golden Model/Prompt" .-> I
+    F --> F1 --> G
+
+    %% Failure Point 2 & Fallback
+    G -- "Failure 2: Token Limit Exceeded (> 80%)" --> H
+    G -- "Optimal Token Count (<= 80%)" --> I
+    H -- "Compressed Context" --> I
+
+    I --> J
+    J -- "Failure 3: Hallucination / Low Grounding" --> K --> L
+    J -- "Pass: Faithfulness & Grounding Verified" --> L
+
+    %% Eval Collector & Continuous Loop
+    J --> EvalCollector
+    EvalCollector -. "Stream Evaluation Telemetry" .-> TelemetryDB
+    
+    TelemetryDB -. "Refusal Spike Alert (> 15%)" .-> AlertService
+    TelemetryDB -. "Auto-Rollback Trigger: Faithfulness Drop (< 0.85)" .-> CICD
+    CICD -. "Rollback to Golden Prompt/Model" .-> I
 ```
 
 ---
 
-## 🛡️ Three Identified Failure Points & Explicit Fallback Behaviors
+## 🏛️ System Boundary Breakdown (Yours vs. Third-Party)
 
-| # | Failure Point | Root Cause & Detection | Explicit Fallback Behavior |
+| Environment | Component Name | Role & Responsibility |
+|---|---|---|
+| **Your System (Internal)** | **API Gateway & Semantic Cache** | Edge termination, rate limiting, and Redis similarity cache ($\ge 0.95$). |
+| **Your System (Internal)** | **Query Analyzer & Rewriter** | Query decomposition, entity extraction, and vector query rewriting. |
+| **Your System (Internal)** | **Vector DB & Hybrid Retriever** | Internal vector similarity search (Dense + BM25 sparse search). |
+| **Your System (Internal)** | **Async Reranker Queue & Workers** | Decoupled GPU worker pool executing Cross-Encoder reranking. |
+| **Your System (Internal)** | **Context Window Monitor** | Pre-inference token counter protecting against context window blowouts. |
+| **Your System (Internal)** | **Eval Gate & Collector** | Inline NLI evaluation judge verifying citation grounding and faithfulness. |
+| **Your System (Internal)** | **Telemetry & Metrics DB** | Prometheus / ClickHouse time-series store tracking refusal & quality drift. |
+| **Third-Party (External)** | **External Search Tool** | External agent (SerpAPI / Tavily) fetching real-time web context. |
+| **Third-Party (External)** | **Generator LLM Provider** | Hosted model endpoint (e.g. OpenAI GPT-4o / Anthropic Claude / Vertex AI). |
+| **Third-Party (External)** | **PagerDuty / Alerting** | On-call incident response triggering when refusal anomalies spike. |
+| **Third-Party (External)** | **CI/CD Deployment Engine** | Automated deployment pipeline (GitHub Actions / Argo) managing rollback webhooks. |
+
+---
+
+## 🛡️ 3 Identified Failure Points & Explicit Fallback Behaviors
+
+| # | Failure Point | Detection Trigger | Explicit Fallback Behavior |
 |---|---|---|---|
-| **1** | **Retriever Failure (Low Relevance / Empty Set)** | Vector similarity scores return chunks with cosine similarity below `< 0.70`, or empty chunk sets due to knowledge base cold-start or domain drift. | **Automated Web Search Fallback:** The execution pipeline branches to an external real-time tool (e.g., SerpAPI / Tavily search agent) to retrieve authoritative web documents, convert them into dynamically embedded chunks, and route them into the reranker without terminating the user session. |
-| **2** | **Context Window Overflow** | High volume of retrieved chunks, extensive system prompts, or multi-turn conversational histories exceed 80% of model context limits, risking truncation or severe latency. | **Map-Reduce Token Compression Fallback:** A token-counting middleware intercepts the payload prior to inference. Chunks are passed through a lightweight, high-throughput model (e.g., Gemini Flash / Claude Haiku) executing hierarchical Map-Reduce summarization to compress facts into dense bullet points while retaining original metadata and chunk IDs. |
-| **3** | **Eval Gate Rejection (Hallucination)** | The Generator LLM produces ungrounded statements, factually hallucinated figures, or phantom citations that fail the automated Faithfulness Judge model. | **Deterministic Safe Response Fallback:** The system immediately discards the generated text and responds with a standardized, deterministic safe fallback: `"I cannot verify this information based on the available data."` This prevents hallucinated data from reaching the user and flags the query for human review. |
+| **1** | **Retriever Failure (Low Relevance / Empty Set)** | Vector similarity scores return chunks below `< 0.70`, or empty chunk sets. | **Web Search Fallback:** System branches to an external tool agent (SerpAPI / Tavily) to retrieve authoritative web documents, embed them on-the-fly, and inject them into the reranker without terminating the session. |
+| **2** | **Context Window Overflow** | Accumulated tokens (history + system prompt + retrieved chunks) exceed $80\%$ of model context limit. | **Map-Reduce Token Compression:** Middleware intercepts payload and runs hierarchical Map-Reduce summarization via a fast lightweight model, compressing text by 60–75% while preserving chunk IDs and facts. |
+| **3** | **Eval Gate Rejection (Hallucination)** | Automated NLI Faithfulness Judge detects ungrounded assertions or hallucinated claims ($< 0.85$). | **Deterministic Safe Response:** System discards the draft response and serves a pre-approved safe fallback message: `"I cannot verify this information based on the available data."` |
 
 ---
 
 ## ⚡ Scaling Consideration: The Reranker Bottleneck
 
-### 1. Bottleneck Identification
-* **Component:** **Cross-Encoder Reranker**
-* **Why it bottlenecks first:**
-  Unlike Bi-Encoders that pre-compute document vectors for sub-millisecond approximate nearest neighbor (ANN) lookups, Cross-Encoders pass the query and every candidate chunk jointly through full all-to-all cross-attention layers ($O(N \times L^2)$ complexity). 
-  Under high concurrent traffic (e.g., 500+ QPS), scoring 50 candidate chunks per request demands heavy GPU compute, saturating VRAM and blocking synchronous HTTP event loops.
-
-### 2. Mitigation Strategy
-1. **Asynchronous Worker Pool & Auto-Scaling:**
-   - Decouple reranking from the main web server using a Celery/RabbitMQ or Redis message broker.
-   - Deploy reranking models on specialized GPU workers (e.g., NVIDIA T4/A10G) managed by **Kubernetes Event-driven Autoscaling (KEDA)** that scale horizontally based on queue depth.
-2. **Semantic Caching Layer:**
-   - Position a high-performance **Semantic Cache (Redis / GPTCache)** in front of the API Gateway.
-   - Queries with cosine similarity $\ge 0.95$ bypass the vector DB and reranker completely, returning cached responses with $< 20\text{ms}$ latency and zero GPU consumption.
-3. **Two-Tier Cascading Filter:**
-   - Apply a lightweight ColBERT or BM25 lexical pruner to reduce candidates from 50 down to the top 15 before feeding them into the heavy Cross-Encoder.
+* **Component Bottlenecking First:** **Cross-Encoder Reranker**.
+* **Why it bottlenecks:** Unlike Bi-Encoders that compute independent embeddings, Cross-Encoders pass query and document pairs jointly through full cross-attention ($\mathcal{O}(K \cdot L^2)$). Under high concurrency (500+ QPS), scoring 50 candidate chunks per request saturates GPU VRAM and blocks the asynchronous event loop.
+* **Mitigation:**
+  1. **Decouple the Reranker:** Offload scoring to an asynchronous Redis queue with auto-scaling GPU workers (KEDA).
+  2. **Semantic Caching:** Deploy a Redis semantic cache at the gateway to return cached responses in $< 15\text{ms}$ for queries with cosine similarity $\ge 0.95$.
 
 ---
 
-## 📊 Eval Integration: Continuous Monitoring, Alerts & Automated Rollback
+## 📊 Eval Integration: Alerts & Autonomous Rollbacks
 
-### 1. Real-Time Telemetry Pipeline
-Every request passing through the **Eval Gate** emits structured telemetry events asynchronously to OpenTelemetry, Prometheus, and a TimescaleDB/ClickHouse metrics store:
-* **Faithfulness Score:** Ratio of claim sentences grounded in source context.
-* **Answer Relevance:** Embedding cosine similarity between query and generated output.
-* **Refusal Rate:** Proportion of queries triggering the deterministic safe response fallback.
-* **P99 Latency & Token Consumption.**
-
-### 2. Alert Trigger (Goodhart's Law Detection)
-* **Condition:** Refusal Rate moving average spikes by $> 15\%$ over a rolling 15-minute window while Faithfulness remains artificially high ($\approx 1.0$).
-* **Significance:** Detects when guardrails become excessively conservative and degrade user utility.
-* **Action:** Triggers an immediate **PagerDuty P1 Incident** alerting on-call AI engineers to recalibrate guardrail thresholds.
-
-### 3. Automated Rollback Trigger (Quality Regression Guard)
-* **Condition:** Rolling average Faithfulness drops below `0.85` or Hallucination Rate exceeds `5%` across 100 consecutive requests following a prompt/model update.
-* **Action:**
-  1. The telemetry analyzer triggers an authenticated webhook to the **CI/CD orchestrator (GitHub Actions / Argo Rollouts)**.
-  2. The deployment pipeline initiates an **automated zero-downtime rollback** to the last known "Golden" model configuration and prompt template version.
-  3. Traffic is rerouted immediately away from the faulty version, and the failed run is automatically packaged into an evaluation dataset for offline regression debugging.
+1. **Where the Eval Collector Sits:** The **Eval Collector** sits inline directly between the Generator LLM and the final output gate. It evaluates the generated draft against retrieved context chunks before the response reaches the user.
+2. **Alert Trigger (Goodhart’s Law Detection):** If the **Refusal Rate** spikes by $> 15\%$ while faithfulness remains near 1.0, an automated **PagerDuty P1 alert** notifies engineers that guardrails have become over-conservative.
+3. **Auto-Rollback Trigger (Quality Regression Guard):** If average Faithfulness drops below `0.85` across 100 requests following a deployment, an automated webhook notifies GitHub Actions / Argo Rollouts to immediately roll back traffic to the previous **Golden Release**.
 
 ---
 
-## 🚀 How to View & Run the Interactive Diagram
+## 🚀 Repository Files
 
-You can view the interactive architecture diagram in two ways:
-1. Open [`index.html`](file:///C:/Users/Naman/.gemini/antigravity-ide/scratch/day8_advanced_architecture/index.html) in your browser for a live interactive view with zoom and pan controls.
-2. View the raw Mermaid definitions in [`diagram.mmd`](file:///C:/Users/Naman/.gemini/antigravity-ide/scratch/day8_advanced_architecture/diagram.mmd).
-
----
-
-## 📄 Git Repository & Submission Info
-- To push to your GitHub account:
-  ```bash
-  git init
-  git add .
-  git commit -m "feat: complete Day 8 advanced architecture with fallbacks, scaling, and eval rollback"
-  git branch -M main
-  git remote add origin https://github.com/<YOUR-USERNAME>/day8-advanced-architecture.git
-  git push -u origin main
-  ```
+- [README.md](file:///C:/Users/Naman/Desktop/day8_advanced_architecture/README.md)
+- [ARCHITECTURE.md](file:///C:/Users/Naman/Desktop/day8_advanced_architecture/ARCHITECTURE.md)
+- [SUBMISSION.md](file:///C:/Users/Naman/Desktop/day8_advanced_architecture/SUBMISSION.md)
+- [diagram.mmd](file:///C:/Users/Naman/Desktop/day8_advanced_architecture/diagram.mmd)
+- [index.html](file:///C:/Users/Naman/Desktop/day8_advanced_architecture/index.html)

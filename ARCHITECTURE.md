@@ -12,44 +12,76 @@ The system implements a production-grade multi-stage Retrieval-Augmented Generat
 graph TD
     %% Styling
     classDef client fill:#1E293B,stroke:#475569,stroke-width:2px,color:#F8FAFC;
-    classDef gateway fill:#0F766E,stroke:#14B8A6,stroke-width:2px,color:#FFFFFF;
     classDef core fill:#1D4ED8,stroke:#3B82F6,stroke-width:2px,color:#FFFFFF;
     classDef fallback fill:#B91C1C,stroke:#EF4444,stroke-width:2px,color:#FFFFFF,stroke-dasharray: 4 4;
     classDef eval fill:#B45309,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF;
     classDef telemetry fill:#581C87,stroke:#A855F7,stroke-width:2px,color:#FFFFFF;
     classDef cache fill:#047857,stroke:#10B981,stroke-width:2px,color:#FFFFFF;
+    classDef note fill:#374151,stroke:#9CA3AF,stroke-width:1px,color:#F9FAFB,stroke-dasharray: 3 3;
 
-    A[User Request]:::client --> B[API Gateway / Web Interface]:::gateway
-    B --> B_Cache{Semantic Cache Lookup}:::gateway
-    
-    B_Cache -- "Hit (Cosine >= 0.95)" --> B_Hit[Cached Response Delivered]:::cache
-    B_Cache -- "Miss" --> C{Query Analyzer & Rewriter}:::core
-    
-    C --> D[Vector DB Retriever]:::core
-    
-    %% Failure Path 1
-    D -- "Failure 1: Low Relevance Score (< 0.70)" --> E[Fallback: Execute Web Search Tool]:::fallback
-    D -- "High Relevance (>= 0.70)" --> F[Async Queue: Cross-Encoder Reranker]:::core
-    E --> F
-    
-    F --> G{Context Monitor}:::core
-    
-    %% Failure Path 2
-    G -- "Failure 2: Token Limit Exceeded (> 80%)" --> H[Fallback: Trigger Map-Reduce Summarization]:::fallback
-    G -- "Optimal Tokens (<= 80%)" --> I[Generator LLM]:::core
-    H --> I
-    
-    I --> J{Eval Gate: Faithfulness Guardrail}:::eval
-    
-    %% Failure Path 3
-    J -- "Failure 3: Hallucination / Low Grounding" --> K[Fallback: Deterministic Safe Response]:::fallback
-    J -- "Pass" --> L[Synthesized Output]:::client
+    %% Client Layer
+    subgraph Client_Layer["User Layer"]
+        A["User Request"]:::client
+        L["Synthesized Output Delivered"]:::client
+    end
 
-    %% Eval Loop
-    J -.- M[(Telemetry & Metrics DB)]:::telemetry
-    M -. "Refusal Spike (> 15%)" .-> N[PagerDuty Alert: Tuning Required]:::telemetry
-    M -. "Critical Drop (< 0.85 Faithfulness)" .-> O[Automated Rollback Webhook]:::telemetry
-    O -. "Rollback Model / Prompt Version" .-> I
+    %% Internal Boundary
+    subgraph Internal_Boundary["Internal System Boundary - Your Infrastructure"]
+        B["API Gateway & Semantic Cache"]:::core
+        B_Cache{"Semantic Cache Lookup"}:::core
+        B_Hit["Deliver Cached Response"]:::cache
+        C{"Query Analyzer & Rewriter"}:::core
+        
+        D[("Internal Vector DB / Hybrid Retriever")]:::core
+        
+        F["Async Queue: Reranker Jobs"]:::core
+        F1["Cross-Encoder Reranker Workers"]:::core
+        
+        G{"Context Window Monitor"}:::core
+        H["Fallback 2: Map-Reduce Summarization"]:::fallback
+        
+        J{"Eval Gate: Faithfulness Guardrail"}:::eval
+        K["Fallback 3: Deterministic Safe Response"]:::fallback
+
+        EvalCollector["NOTE: Eval Collector (Sits inline post-generation)"]:::note
+        TelemetryDB[("Telemetry & Metrics DB")]:::telemetry
+    end
+
+    %% External Boundary
+    subgraph External_Boundary["Third-Party Managed Services Boundary"]
+        E["Fallback 1: External Search Agent Tool (SerpAPI / Tavily)"]:::fallback
+        I["Generator LLM API (OpenAI / Anthropic / Vertex AI)"]:::core
+        AlertService["PagerDuty / Opsgenie Incident Response"]:::telemetry
+        CICD["CI/CD Orchestrator (GitHub Actions / Argo Rollouts)"]:::telemetry
+    end
+
+    %% Workflow Connections
+    A --> B
+    B --> B_Cache
+    B_Cache -- "Cache Hit (Cosine >= 0.95)" --> B_Hit --> L
+    B_Cache -- "Cache Miss" --> C
+    C --> D
+
+    D -- "Failure 1: Low Relevance Score (< 0.70)" --> E
+    D -- "High Relevance (>= 0.70)" --> F
+    E -- "Inject Real-Time Web Context" --> F
+
+    F --> F1 --> G
+
+    G -- "Failure 2: Token Limit Exceeded (> 80%)" --> H
+    G -- "Optimal Token Count (<= 80%)" --> I
+    H -- "Compressed Context" --> I
+
+    I --> J
+    J -- "Failure 3: Hallucination / Low Grounding" --> K --> L
+    J -- "Pass: Faithfulness & Grounding Verified" --> L
+
+    J --> EvalCollector
+    EvalCollector -. "Stream Evaluation Telemetry" .-> TelemetryDB
+    
+    TelemetryDB -. "Refusal Spike Alert (> 15%)" .-> AlertService
+    TelemetryDB -. "Auto-Rollback Trigger: Faithfulness Drop (< 0.85)" .-> CICD
+    CICD -. "Rollback to Golden Prompt/Model" .-> I
 ```
 
 ---
