@@ -1,5 +1,4 @@
-graph TD
-    %% Node Styling Definitions
+﻿graph TD
     classDef client fill:#1E293B,stroke:#475569,stroke-width:2px,color:#F8FAFC;
     classDef core fill:#1D4ED8,stroke:#3B82F6,stroke-width:2px,color:#FFFFFF;
     classDef fallback fill:#B91C1C,stroke:#EF4444,stroke-width:2px,color:#FFFFFF,stroke-dasharray: 4 4;
@@ -8,70 +7,57 @@ graph TD
     classDef cache fill:#047857,stroke:#10B981,stroke-width:2px,color:#FFFFFF;
     classDef note fill:#374151,stroke:#9CA3AF,stroke-width:1px,color:#F9FAFB,stroke-dasharray: 3 3;
 
-    %% Client Layer
-    subgraph Client_Layer["User Layer"]
+    subgraph UserLayer["User Layer"]
         A["User Request"]:::client
         L["Synthesized Output Delivered"]:::client
     end
 
-    %% Internal Boundary (Your Infrastructure)
-    subgraph Internal_Boundary["Internal System Boundary - Your Infrastructure"]
-        B["API Gateway & Semantic Cache"]:::core
+    subgraph InternalBoundary["Internal System Boundary - Your Infrastructure"]
+        B["API Gateway and Semantic Cache"]:::core
         B_Cache{"Semantic Cache Lookup"}:::core
         B_Hit["Deliver Cached Response"]:::cache
-        C{"Query Analyzer & Rewriter"}:::core
-        
-        D[("Internal Vector DB / Hybrid Retriever")]:::core
-        
-        F["Async Queue: Reranker Jobs"]:::core
+        C{"Query Analyzer and Rewriter"}:::core
+        D[("Internal Vector DB - Hybrid Retriever")]:::core
+        F["Async Queue - Reranker Jobs"]:::core
         F1["Cross-Encoder Reranker Workers"]:::core
-        
         G{"Context Window Monitor"}:::core
-        H["Fallback 2: Map-Reduce Summarization"]:::fallback
-        
-        J{"Eval Gate: Faithfulness Guardrail"}:::eval
-        K["Fallback 3: Deterministic Safe Response"]:::fallback
-
-        %% NOTE: Where the Eval Collector sits
-        EvalCollector["NOTE: Eval Collector (Sits inline post-generation)"]:::note
-        TelemetryDB[("Telemetry & Metrics DB")]:::telemetry
+        H["Fallback 2 - Map-Reduce Summarization"]:::fallback
+        J{"Eval Gate - Faithfulness Guardrail"}:::eval
+        K["Fallback 3 - Deterministic Safe Response"]:::fallback
+        EvalCollector["NOTE: Eval Collector sits inline post-generation"]:::note
+        TelemetryDB[("Telemetry and Metrics DB")]:::telemetry
     end
 
-    %% External Boundary (Third-Party Services)
-    subgraph External_Boundary["Third-Party Managed Services Boundary"]
-        E["Fallback 1: External Search Agent Tool (SerpAPI / Tavily)"]:::fallback
-        I["Generator LLM API (OpenAI / Anthropic / Vertex AI)"]:::core
-        AlertService["PagerDuty / Opsgenie Incident Response"]:::telemetry
-        CICD["CI/CD Orchestrator (GitHub Actions / Argo Rollouts)"]:::telemetry
+    subgraph ExternalBoundary["Third-Party Managed Services Boundary"]
+        E["Fallback 1 - External Web Search Agent"]:::fallback
+        I["Generator LLM API - OpenAI / Anthropic / Vertex AI"]:::core
+        AlertSvc["PagerDuty / Opsgenie Incident Response"]:::telemetry
+        CICD["CI/CD Orchestrator - GitHub Actions / Argo Rollouts"]:::telemetry
     end
 
-    %% Workflow Connections
     A --> B
     B --> B_Cache
-    B_Cache -- "Cache Hit (Cosine >= 0.95)" --> B_Hit --> L
+    B_Cache -- "Cache Hit: Cosine >= 0.95" --> B_Hit --> L
     B_Cache -- "Cache Miss" --> C
     C --> D
 
-    %% Failure Point 1 & Fallback
-    D -- "Failure 1: Low Relevance Score (< 0.70)" --> E
-    D -- "High Relevance (>= 0.70)" --> F
+    D -- "Failure 1: Low Relevance Score < 0.70" --> E
+    D -- "High Relevance >= 0.70" --> F
     E -- "Inject Real-Time Web Context" --> F
 
     F --> F1 --> G
 
-    %% Failure Point 2 & Fallback
-    G -- "Failure 2: Token Limit Exceeded (> 80%)" --> H
-    G -- "Optimal Token Count (<= 80%)" --> I
+    G -- "Failure 2: Token Limit Exceeded > 80 pct" --> H
+    G -- "Optimal Token Count <= 80 pct" --> I
     H -- "Compressed Context" --> I
 
     I --> J
     J -- "Failure 3: Hallucination / Low Grounding" --> K --> L
-    J -- "Pass: Faithfulness & Grounding Verified" --> L
+    J -- "Pass: Faithfulness Verified" --> L
 
-    %% Eval Collector & Continuous Loop
     J --> EvalCollector
     EvalCollector -. "Stream Evaluation Telemetry" .-> TelemetryDB
-    
-    TelemetryDB -. "Refusal Spike Alert (> 15%)" .-> AlertService
-    TelemetryDB -. "Auto-Rollback Trigger: Faithfulness Drop (< 0.85)" .-> CICD
-    CICD -. "Rollback to Golden Prompt/Model" .-> I
+
+    TelemetryDB -. "Alert: Refusal Spike > 15 pct" .-> AlertSvc
+    TelemetryDB -. "Auto-Rollback: Faithfulness Drop < 0.85" .-> CICD
+    CICD -. "Rollback to Golden Prompt or Model" .-> I

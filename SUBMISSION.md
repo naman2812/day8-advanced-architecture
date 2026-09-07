@@ -1,108 +1,21 @@
-# Day 8 Assignment Submission Guide
-
-Use this document to submit your answers in the guided project workspace to earn your **5 points**.
+﻿# Day 8 Assignment Submission Cheat-Sheet
 
 ---
 
-## 🎯 Deliverable 1: Pillar Choices (Foundational Day 8)
-*Prompt: "Choose a use case requiring at least 2 of the 4 pillars. 2–3 sentences explaining your pillar choices."*
+## Deliverable A: Pillar Choices (Day 8 Base - 2 to 3 sentences)
 
-> **For this enterprise knowledge assistant, we selected Retrieval-Augmented Generation (RAG) and Continuous Evaluation & Guardrails as our two primary pillars.** RAG is required because our enterprise documentation updates dynamically and demands deterministic grounding without costly retraining. Continuous Evaluation & Guardrails are essential because user-facing accuracy requires real-time hallucination prevention and automated rollback triggers to maintain strict regulatory compliance.
-
----
-
-## 🎯 Deliverable 2: Most Critical Failure Point & Mitigation (Advanced Day 8)
-*Prompt: "Updated diagram + 2–3 sentences on the most critical failure point and mitigation."*
-
-> **The most critical failure point is an ungrounded hallucination bypassing the evaluation guardrail, which directly damages institutional credibility and user trust.** To mitigate this, the architecture enforces a deterministic citation-grounding validation layer where generated statements must link to explicit retrieved chunk IDs verified via Natural Language Inference (NLI) and regex pattern matching. Any output failing this strict threshold is intercepted before rendering and replaced by a deterministic, pre-approved safe response (`"I cannot verify this information based on the available data."`).
+For this enterprise knowledge assistant, we selected **Retrieval-Augmented Generation (RAG)** and **Continuous Evaluation & Guardrails** as our two primary pillars. RAG is required because enterprise documentation updates dynamically and demands deterministic grounding without costly retraining. Continuous Evaluation & Guardrails are essential because user-facing accuracy requires real-time hallucination prevention and automated rollback triggers to maintain strict regulatory compliance.
 
 ---
 
-## 📊 Deliverable 3: Architecture Diagram (System Boundaries + Eval Collector + Fallbacks)
+## Deliverable B: Critical Failure Point & Mitigation (Day 8 Advanced - 2 to 3 sentences)
 
-```mermaid
-graph TD
-    %% Node Styling Definitions
-    classDef client fill:#1E293B,stroke:#475569,stroke-width:2px,color:#F8FAFC;
-    classDef core fill:#1D4ED8,stroke:#3B82F6,stroke-width:2px,color:#FFFFFF;
-    classDef fallback fill:#B91C1C,stroke:#EF4444,stroke-width:2px,color:#FFFFFF,stroke-dasharray: 4 4;
-    classDef eval fill:#B45309,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF;
-    classDef telemetry fill:#581C87,stroke:#A855F7,stroke-width:2px,color:#FFFFFF;
-    classDef cache fill:#047857,stroke:#10B981,stroke-width:2px,color:#FFFFFF;
-    classDef note fill:#374151,stroke:#9CA3AF,stroke-width:1px,color:#F9FAFB,stroke-dasharray: 3 3;
+The most critical failure point is an **ungrounded hallucination bypassing the evaluation guardrail**, which directly damages institutional credibility and user trust in mission-critical applications. To mitigate this, the architecture enforces a deterministic citation-grounding validation layer where every generated statement must bind to explicit retrieved chunk IDs verified via Natural Language Inference (NLI) and regex pattern matching before rendering. Any draft failing this strict threshold is intercepted before rendering and replaced by a deterministic, pre-approved safe response: *"I cannot verify this information based on the available data."*
 
-    %% Client Layer
-    subgraph Client_Layer["User Layer"]
-        A["User Request"]:::client
-        L["Synthesized Output Delivered"]:::client
-    end
+---
 
-    %% Internal Boundary (Your Infrastructure)
-    subgraph Internal_Boundary["Internal System Boundary - Your Infrastructure"]
-        B["API Gateway & Semantic Cache"]:::core
-        B_Cache{"Semantic Cache Lookup"}:::core
-        B_Hit["Deliver Cached Response"]:::cache
-        C{"Query Analyzer & Rewriter"}:::core
-        
-        D[("Internal Vector DB / Hybrid Retriever")]:::core
-        
-        F["Async Queue: Reranker Jobs"]:::core
-        F1["Cross-Encoder Reranker Workers"]:::core
-        
-        G{"Context Window Monitor"}:::core
-        H["Fallback 2: Map-Reduce Summarization"]:::fallback
-        
-        J{"Eval Gate: Faithfulness Guardrail"}:::eval
-        K["Fallback 3: Deterministic Safe Response"]:::fallback
+## GitHub Submission Link
 
-        %% NOTE: Where the Eval Collector sits
-        EvalCollector["NOTE: Eval Collector (Sits inline post-generation)"]:::note
-        TelemetryDB[("Telemetry & Metrics DB")]:::telemetry
-    end
-
-    %% External Boundary (Third-Party Services)
-    subgraph External_Boundary["Third-Party Managed Services Boundary"]
-        E["Fallback 1: External Search Agent Tool (SerpAPI / Tavily)"]:::fallback
-        I["Generator LLM API (OpenAI / Anthropic / Vertex AI)"]:::core
-        AlertService["PagerDuty / Opsgenie Incident Response"]:::telemetry
-        CICD["CI/CD Orchestrator (GitHub Actions / Argo Rollouts)"]:::telemetry
-    end
-
-    %% Workflow Connections
-    A --> B
-    B --> B_Cache
-    B_Cache -- "Cache Hit (Cosine >= 0.95)" --> B_Hit --> L
-    B_Cache -- "Cache Miss" --> C
-    C --> D
-
-    %% Failure Point 1 & Fallback
-    D -- "Failure 1: Low Relevance Score (< 0.70)" --> E
-    D -- "High Relevance (>= 0.70)" --> F
-    E -- "Inject Real-Time Web Context" --> F
-
-    F --> F1 --> G
-
-    %% Failure Point 2 & Fallback
-    G -- "Failure 2: Token Limit Exceeded (> 80%)" --> H
-    G -- "Optimal Token Count (<= 80%)" --> I
-    H -- "Compressed Context" --> I
-
-    I --> J
-    J -- "Failure 3: Hallucination / Low Grounding" --> K --> L
-    J -- "Pass: Faithfulness & Grounding Verified" --> L
-
-    %% Eval Collector & Continuous Loop
-    J --> EvalCollector
-    EvalCollector -. "Stream Evaluation Telemetry" .-> TelemetryDB
-    
-    TelemetryDB -. "Refusal Spike Alert (> 15%)" .-> AlertService
-    TelemetryDB -. "Auto-Rollback Trigger: Faithfulness Drop (< 0.85)" .-> CICD
-    CICD -. "Rollback to Golden Prompt/Model" .-> I
 ```
-
----
-
-## 🔗 GitHub Submission Link
-```text
 https://github.com/naman2812/day8-advanced-architecture
 ```
