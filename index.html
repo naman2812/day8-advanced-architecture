@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Day 8: Advanced Architecture Interactive Visualizer</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(17, 24, 39, 0.85);
+      --border: #1f2937;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.25);
+      --fallback: #ef4444;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --telemetry: #a855f7;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #172554 0%, var(--bg) 60%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 2rem 1.5rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #ffffff 30%, #93c5fd 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 750px;
+      margin: 0 auto;
+    }
+
+    /* Key Deliverable Highlight Card */
+    .callout-card {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(30, 41, 59, 0.7) 100%);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .callout-card h2 {
+      font-size: 1.15rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #f87171;
+      margin-bottom: 0.5rem;
+    }
+
+    .callout-card p {
+      color: #e2e8f0;
+      font-size: 0.98rem;
+    }
+
+    /* Diagram Viewer Box */
+    .viewer-panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2.5rem;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+      position: relative;
+      overflow-x: auto;
+    }
+
+    .viewer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .legend {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-size: 0.85rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+    .dot-core { background: #2563eb; }
+    .dot-fallback { background: #ef4444; border: 1px dashed #ffffff; }
+    .dot-eval { background: #f59e0b; }
+    .dot-telemetry { background: #a855f7; }
+    .dot-cache { background: #10b981; }
+
+    .mermaid-wrapper {
+      display: flex;
+      justify-content: center;
+      padding: 1rem 0;
+      min-width: 800px;
+    }
+
+    /* Grid of Architectural Details */
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      backdrop-filter: blur(8px);
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-title.red { color: #f87171; }
+    .card-title.amber { color: #fbbf24; }
+    .card-title.purple { color: #c084fc; }
+
+    .card p, .card li {
+      font-size: 0.92rem;
+      color: #cbd5e1;
+    }
+
+    .card ul {
+      margin-left: 1.2rem;
+      margin-top: 0.5rem;
+    }
+
+    .card li {
+      margin-bottom: 0.4rem;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85em;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.15rem 0.35rem;
+      border-radius: 4px;
+      color: #93c5fd;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      padding: 2rem 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="badge">Day 8 Engineering Assignment</span>
+      <h1>Advanced RAG System Architecture</h1>
+      <p class="subtitle">Failure Analysis, Decoupled GPU Scaling, and Autonomous Evaluation Rollback Controls</p>
+    </header>
+
+    <!-- Deliverable Summary Box -->
+    <div class="callout-card">
+      <h2>🛡️ Most Critical Failure Point & Mitigation</h2>
+      <p>
+        <strong>The most critical failure point is an ungrounded hallucination bypassing the evaluation guardrail, which directly damages institutional credibility and user trust.</strong> To mitigate this, the architecture enforces a deterministic citation-grounding validation layer where generated statements must link to explicit retrieved chunk IDs verified via Natural Language Inference (NLI) and regex pattern matching. Any output failing this strict threshold is intercepted before rendering and replaced by a deterministic, pre-approved safe response (<em>"I cannot verify this information based on the available data."</em>).
+      </p>
+    </div>
+
+    <!-- Live Architecture Diagram Box -->
+    <div class="viewer-panel">
+      <div class="viewer-header">
+        <h3 style="font-size: 1.25rem;">Interactive System Architecture Diagram</h3>
+        <div class="legend">
+          <div class="legend-item"><div class="dot dot-cache"></div><span>Semantic Cache</span></div>
+          <div class="legend-item"><div class="dot dot-core"></div><span>Core Pipeline</span></div>
+          <div class="legend-item"><div class="dot dot-fallback"></div><span>Circuit Breaker Fallback</span></div>
+          <div class="legend-item"><div class="dot dot-eval"></div><span>Eval Guardrail</span></div>
+          <div class="legend-item"><div class="dot dot-telemetry"></div><span>Telemetry & Rollback</span></div>
+        </div>
+      </div>
+
+      <div class="mermaid-wrapper">
+        <pre class="mermaid">
+graph TD
+    classDef client fill:#1E293B,stroke:#475569,stroke-width:2px,color:#F8FAFC;
+    classDef gateway fill:#0F766E,stroke:#14B8A6,stroke-width:2px,color:#FFFFFF;
+    classDef core fill:#1D4ED8,stroke:#3B82F6,stroke-width:2px,color:#FFFFFF;
+    classDef fallback fill:#B91C1C,stroke:#EF4444,stroke-width:2px,color:#FFFFFF,stroke-dasharray: 4 4;
+    classDef eval fill:#B45309,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF;
+    classDef telemetry fill:#581C87,stroke:#A855F7,stroke-width:2px,color:#FFFFFF;
+    classDef cache fill:#047857,stroke:#10B981,stroke-width:2px,color:#FFFFFF;
+
+    A[User Request]:::client --> B[API Gateway / Web Interface]:::gateway
+    B --> B_Cache{Semantic Cache Lookup}:::gateway
+    
+    B_Cache -- "Cache Hit (Cosine >= 0.95)" --> B_Hit[Deliver Cached Response]:::cache
+    B_Cache -- "Cache Miss" --> C{Query Analyzer & Rewriter}:::core
+    
+    C --> D[Vector DB Retriever]:::core
+    
+    %% Failure Path 1 & Fallback
+    D -- "Failure 1: Low Relevance Score (< 0.70)" --> E[Fallback: Execute Web Search Tool]:::fallback
+    D -- "High Relevance (>= 0.70)" --> F[Async Queue: Cross-Encoder Reranker]:::core
+    E --> F
+    
+    F --> G{Context Monitor}:::core
+    
+    %% Failure Path 2 & Fallback
+    G -- "Failure 2: Token Limit Exceeded (> 80%)" --> H[Fallback: Trigger Map-Reduce Summarization]:::fallback
+    G -- "Optimal Tokens (<= 80%)" --> I[Generator LLM]:::core
+    H --> I
+    
+    I --> J{Eval Gate: Faithfulness Guardrail}:::eval
+    
+    %% Failure Path 3 & Fallback
+    J -- "Failure 3: Hallucination / Low Grounding" --> K[Fallback: Deterministic Safe Response]:::fallback
+    J -- "Pass: Grounded & Faithfulness Verified" --> L[Synthesized Output Delivered]:::client
+
+    %% Eval & Telemetry Loop
+    J -.- M[(Telemetry & Metrics DB)]:::telemetry
+    M -. "Alert Trigger: Refusal Spike (> 15%)" .-> N[PagerDuty P1 Incident]:::telemetry
+    M -. "Auto-Rollback Trigger: Faithfulness Drop (< 0.85)" .-> O[CI/CD Auto-Rollback Webhook]:::telemetry
+    O -. "Rollback to Golden Version" .-> I
+        </pre>
+      </div>
+    </div>
+
+    <!-- Technical Deep-Dive Cards -->
+    <div class="details-grid">
+      <!-- Card 1 -->
+      <div class="card">
+        <h3 class="card-title red">🚨 3 Explicit Fallbacks</h3>
+        <ul>
+          <li><strong>Retriever Failure (Cosine &lt; 0.70):</strong> Routes query to an external tool agent (SerpAPI / Tavily) to dynamically fetch and embed fresh web documents.</li>
+          <li><strong>Context Window Overflow (&gt; 80%):</strong> Intercepted by middleware and compressed via a fast model running hierarchical Map-Reduce summarization.</li>
+          <li><strong>Eval Gate Rejection:</strong> NLI faithfulness judge rejects ungrounded drafts and immediately returns a deterministic safe response.</li>
+        </ul>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="card">
+        <h3 class="card-title amber">⚡ Scaling the Reranker</h3>
+        <ul>
+          <li><strong>First Bottleneck:</strong> Cross-Encoder Reranker bottlenecking on quadratic cross-attention <code>O(K × L²)</code>, exhausting GPU VRAM and blocking async loops.</li>
+          <li><strong>Queue Decoupling:</strong> Candidate sets are offloaded to an asynchronous Redis/Celery queue with dynamic KEDA worker autoscaling on GPU nodes.</li>
+          <li><strong>Semantic Caching:</strong> High-similarity queries (<code>≥ 0.95</code>) return cached answers in &lt;15ms with zero GPU usage.</li>
+        </ul>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="card">
+        <h3 class="card-title purple">📈 Eval Telemetry & Rollback</h3>
+        <ul>
+          <li><strong>Goodhart's Law Alert:</strong> A refusal rate spike &gt;15% while faithfulness is high triggers a PagerDuty P1 incident to detect over-conservative rejection.</li>
+          <li><strong>Automated Rollback:</strong> A drop in faithfulness below 0.85 triggers an automated CI/CD webhook (GitHub Actions / Argo Rollouts) that rolls back traffic to the previous golden release.</li>
+        </ul>
+      </div>
+    </div>
+
+    <footer>
+      Day 8 Guided Project Workspace Submission | Ready for GitHub Push (5 Points)
+    </footer>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      flowchart: {
+        curve: 'basis',
+        nodeSpacing: 40,
+        rankSpacing: 45
+      }
+    });
+  </script>
+</body>
+</html>
